@@ -57,9 +57,9 @@ jobs:
         run: |
           echo "Starting AquilaX Security Scan..."
           aquilax scan \
-            --org-id "6691108b1985981c1f5d5b93" \
-            --group-id "66cc51d790da713a3f7c6075" \
-            --git-uri "https://github.com/AquilaX-AI/vulnapp-python" \
+            --org-id "your_org_id" \
+            --group-id "your_group_id" \
+            --git-uri "your_git_uri" \
             --scanners sast_scanner iac_scanner secret_scanner pii_scanner sca_scanner container_scanner cicd_scanner \
             --public true \
             --frequency Once \
@@ -82,8 +82,8 @@ jobs:
           while [ "$attempt" -le "$max_attempts" ]; do
             echo "Fetching scan results..."
             aquilax get-scan-details \
-              --org-id "6691108b1985981c1f5d5b93" \
-              --group-id "66cc51d790da713a3f7c6075" \
+              --org-id "your_org_id" \
+              --group-id "your_group_id" \
               --project-id "$PROJECT_ID" \
               --scan-id "$SCAN_ID" --format json > scan-results.json
 
@@ -118,8 +118,8 @@ jobs:
         run: |
           echo "Fetching scan results in SARIF format..."
           aquilax get-scan-details \
-            --org-id "6691108b1985981c1f5d5b93" \
-            --group-id "66cc51d790da713a3f7c6075" \
+            --org-id "your_org_id" \
+            --group-id "your_group_id" \
             --project-id "$PROJECT_ID" \
             --scan-id "$SCAN_ID" --format sarif > results.sarif
 
@@ -137,8 +137,8 @@ jobs:
         run: |
           echo "Fetching final scan results..."
           aquilax get-scan-details \
-            --org-id "6691108b1985981c1f5d5b93" \
-            --group-id "66cc51d790da713a3f7c6075" \
+            --org-id "your_org_id" \
+            --group-id "your_group_id" \
             --project-id "$PROJECT_ID" \
             --scan-id "$SCAN_ID" --format json > final-results.json
 
