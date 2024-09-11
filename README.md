@@ -184,6 +184,8 @@ You can find these values from your AquilaX dashboard (app.aquilax.ai) / Aquilax
 ```bash
 aquilax get-orgs # output is your org id
 aquilax get-groups --org-id "org_id"
+--git-uri "your_repo_uri" \
+--scanners sast_scanner iac_scanner secret_scanner pii_scanner sca_scanner container_scanner cicd_scanner \ # scanners you want to enable
 ```
 
 Also, you can set 

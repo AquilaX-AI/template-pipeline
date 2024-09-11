@@ -40,7 +40,7 @@ jobs:
           aquilax scan \
             --org-id "6691108b1985981c1f5d5b93" \
             --group-id "66cc51d790da713a3f7c6075" \
-            --git-uri "https://github.com/AquilaX-AI/vulnapp-python" \
+            --git-uri "https://github.com/AquilaX-AI/template-pipeline" \
             --scanners sast_scanner iac_scanner secret_scanner pii_scanner sca_scanner container_scanner cicd_scanner \
             --public true \
             --frequency Once \
