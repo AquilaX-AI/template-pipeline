@@ -104,9 +104,6 @@ jobs:
             --project-id "$PROJECT_ID" \
             --scan-id "$SCAN_ID" --format sarif > results.sarif
 
-          echo "SARIF results:"
-          cat results.sarif
-
       - name: Uploading SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v2
         with:
@@ -138,3 +135,11 @@ jobs:
           else
             echo "::warning::Vulnerabilities found, but pipeline will continue due to 'fail_on_vulns' set to false."
           fi
+
+          aquilax get-scan-details \
+            --org-id "6691108b1985981c1f5d5b93" \
+            --group-id "66cc51d790da713a3f7c6075" \
+            --project-id "$PROJECT_ID" \
+            --scan-id "$SCAN_ID"
+
+          echo "::notice::For full details, visit https://app.aquilax.ai/scans"
