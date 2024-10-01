@@ -23,18 +23,18 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: read
   security-events: write
 
+env:
+  ORG_ID: "ORG_ID"
+  GROUP_ID: "GROUP_ID"
+
 jobs:
   aquilax_scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -44,119 +44,26 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Install Dependencies
-        run: |
-          echo "Installing AquilaX CLI and dependencies..."
-          pip install aquilax
-          sudo apt-get update && sudo apt-get install -y jq
+      - name: Install AquilaX CLI
+        run: pip install aquilax
 
-      - name: Running AquilaX Scan
-        id: start_scan
+      - name: AquilaX CI Scan
         env:
           AQUILAX_AUTH: ${{ secrets.AQUILAX_API_TOKEN }}
         run: |
-          echo "Starting AquilaX Security Scan..."
-          aquilax scan \
-            --org-id "your_org_id" \
-            --group-id "your_group_id" \
-            --git-uri "your_git_uri" \
-            --scanners sast_scanner iac_scanner secret_scanner pii_scanner sca_scanner container_scanner cicd_scanner \
-            --public true \
-            --frequency Once \
-            --tags cicd audit --format json > scan-output.json
+          GIT_URL="https://github.com/${{ github.repository }}.git"
+          aquilax ci-scan \
+            "$GIT_URL" \
+            --org-id "$ORG_ID" \
+            --group-id "$GROUP_ID" \
+            --scanners sast_scanner iac_scanner secret_scanner \
+                   pii_scanner sca_scanner container_scanner cicd_scanner \
+            --fail-on-vulns  # use this if you want to fail your pipeline if any bug is found
 
-          SCAN_ID=$(jq -r '.scan_id' scan-output.json)
-          PROJECT_ID=$(jq -r '.project_id' scan-output.json)
-          echo "Scan started with SCAN_ID=$SCAN_ID and PROJECT_ID=$PROJECT_ID"
-          echo "SCAN_ID=$SCAN_ID" >> $GITHUB_ENV
-          echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
-
-      - name: Scan Status
-        env:
-          AQUILAX_AUTH: ${{ secrets.AQUILAX_API_TOKEN }}
-        run: |
-          export AQUILAX_AUTH=${{ secrets.AQUILAX_API_TOKEN }}
-          max_attempts=20
-          sleep_time=5
-          attempt=1
-          while [ "$attempt" -le "$max_attempts" ]; do
-            echo "Fetching scan results..."
-            aquilax get-scan-details \
-              --org-id "your_org_id" \
-              --group-id "your_group_id" \
-              --project-id "$PROJECT_ID" \
-              --scan-id "$SCAN_ID" --format json > scan-results.json
-
-            scan_status=$(jq -r '.scan.status' scan-results.json)
-            echo "Current Scan Status: $scan_status"
-            
-            if [ "$scan_status" = "COMPLETED" ]; then
-              echo "Scan completed successfully."
-              break
-            elif [ "$scan_status" = "FAILED" ]; then
-              echo "Scan failed."
-              exit 1
-            fi
-
-            sleep "$sleep_time"
-            sleep_time=$((sleep_time * 2))
-            if [ "$sleep_time" -gt 60 ]; then
-              sleep_time=60
-            fi
-
-            attempt=$((attempt + 1))
-          done
-
-          if [ "$scan_status" != "COMPLETED" ]; then
-            echo "Scan did not complete within the expected time frame."
-            exit 1
-          fi
-
-      - name: SARIF Scan Results
-        env:
-          AQUILAX_AUTH: ${{ secrets.AQUILAX_API_TOKEN }}
-        run: |
-          echo "Fetching scan results in SARIF format..."
-          aquilax get-scan-details \
-            --org-id "your_org_id" \
-            --group-id "your_group_id" \
-            --project-id "$PROJECT_ID" \
-            --scan-id "$SCAN_ID" --format sarif > results.sarif
-
-          echo "SARIF results:"
-          cat results.sarif
-
-      - name: Uploading SARIF to GitHub Security
+      - name: Upload SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: results.sarif
-
-      - name: Checking for Vulnerabilities
-        env:
-          AQUILAX_AUTH: ${{ secrets.AQUILAX_API_TOKEN }}
-        run: |
-          echo "Fetching final scan results..."
-          aquilax get-scan-details \
-            --org-id "your_org_id" \
-            --group-id "your_group_id" \
-            --project-id "$PROJECT_ID" \
-            --scan-id "$SCAN_ID" --format json > final-results.json
-
-          vulnerabilities_count=$(jq '[.scan.results[] | select(.findings != null) | .findings[]] | length' final-results.json)
-          echo "::warning::Number of vulnerabilities found: $vulnerabilities_count"
-      
-          fail_on_vulns=false
-
-          if [ "$fail_on_vulns" = "true" ]; then
-            if [ "$vulnerabilities_count" -gt 0 ]; then
-              echo "::error::Vulnerabilities found in the scan results!"
-              exit 1
-            else
-              echo "::notice::No vulnerabilities found."
-            fi
-          else
-            echo "::warning::Vulnerabilities found, but pipeline will continue due to 'fail_on_vulns' set to false."
-          fi
 ```
 ### 2. Set GitHub Secrets
 To securely authenticate with AquilaX and prevent exposing sensitive information, set up your secrets in GitHub:
@@ -175,22 +82,21 @@ Add the following secrets:
 In the YAML file, update the placeholders with your organization ID and group ID:
 
 ```yaml
---org-id "your_org_id" \
---group-id "your_group_id"
+  ORG_ID: "ORG_ID"
+  GROUP_ID: "GROUP_ID"
 ```
 
 You can find these values from your AquilaX dashboard (app.aquilax.ai) / Aquilax CLI 
 
 ```bash
-aquilax get-orgs # output is your org id
-aquilax get-groups --org-id "org_id"
---git-uri "your_repo_uri" \
+aquilax get orgs # output is your org id
+aquilax get groups --org-id "org_id"
 --scanners sast_scanner iac_scanner secret_scanner pii_scanner sca_scanner container_scanner cicd_scanner \ # scanners you want to enable
 ```
 
 Also, you can set 
 ```bash
-fail_on_vulns=false # Vulnerabilities found, but pipeline will continue due to 'fail_on_vulns' set to false else if vulnerabilities are found pipeline will break.
+--fail_on_vulns # Vulnerabilities found, but pipeline will continue due to 'fail_on_vulns' set to false else if vulnerabilities are found pipeline will break.
 ```
 
 ## Usage
